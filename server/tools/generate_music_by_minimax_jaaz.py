@@ -38,6 +38,13 @@ class GenerateMusicByMiniMaxInputSchema(BaseModel):
             "url links expire after 24 hours."
         ),
     )
+    stream: bool = Field(
+        default=False,
+        description=(
+            "Optional. Whether to use streaming output. Streaming only supports "
+            "the hex output format."
+        ),
+    )
     is_instrumental: bool = Field(
         default=False,
         description="Optional. Whether to generate instrumental music without vocals.",
@@ -61,21 +68,21 @@ class GenerateMusicByMiniMaxInputSchema(BaseModel):
         default=None,
         description=(
             "Optional. URL of the reference audio for music-cover generation. "
-            "Exactly one of audio_url or audio_base64 is required for cover models."
+            "Exactly one reference source is required for cover models."
         ),
     )
     audio_base64: str | None = Field(
         default=None,
         description=(
             "Optional. Base64-encoded reference audio for music-cover generation. "
-            "Exactly one of audio_url or audio_base64 is required for cover models."
+            "Exactly one reference source is required for cover models."
         ),
     )
     cover_feature_id: str | None = Field(
         default=None,
         description=(
             "Optional. Feature id returned by the music cover preprocess API for "
-            "two-step cover generation."
+            "two-step cover generation. Requires lyrics when used."
         ),
     )
     aigc_watermark: bool | None = Field(
@@ -103,6 +110,7 @@ async def generate_music_by_minimax_jaaz(
     prompt: str | None = None,
     lyrics: str | None = None,
     output_format: str = "url",
+    stream: bool = False,
     is_instrumental: bool = False,
     lyrics_optimizer: bool = False,
     audio_setting: Dict[str, Any] | None = None,
@@ -121,7 +129,7 @@ async def generate_music_by_minimax_jaaz(
         model=model,
         prompt=prompt,
         lyrics=lyrics,
-        stream=False,
+        stream=stream,
         output_format=output_format,
         audio_setting=audio_setting,
         lyrics_optimizer=lyrics_optimizer,

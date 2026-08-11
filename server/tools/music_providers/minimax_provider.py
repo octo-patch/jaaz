@@ -110,8 +110,10 @@ class MiniMaxMusicProvider:
         output_format: str,
         stream: bool,
         is_instrumental: bool,
+        lyrics_optimizer: bool,
         prompt: Optional[str],
         lyrics: Optional[str],
+        audio_setting: Optional[Dict[str, Any]],
         audio_url: Optional[str],
         audio_base64: Optional[str],
         cover_feature_id: Optional[str],
@@ -128,19 +130,43 @@ class MiniMaxMusicProvider:
             )
         if stream and output_format != "hex":
             raise ValueError("Streaming music output only supports the hex format.")
+        if audio_setting:
+            audio_format = audio_setting.get("format")
+            if audio_format and audio_format not in MUSIC_AUDIO_FORMATS:
+                raise ValueError(
+                    f"Unsupported audio format: {audio_format}. "
+                    f"Allowed values are {', '.join(MUSIC_AUDIO_FORMATS)}."
+                )
 
         if model in MUSIC_COVER_MODELS:
-            if not (audio_url or audio_base64 or cover_feature_id):
+            reference_count = sum(
+                bool(value) for value in (audio_url, audio_base64, cover_feature_id)
+            )
+            if reference_count != 1:
                 raise ValueError(
-                    "Music cover generation requires one of audio_url, "
-                    "audio_base64 or cover_feature_id."
+                    "Music cover generation requires exactly one of audio_url, "
+                    "audio_base64, or cover_feature_id."
+                )
+            if not prompt:
+                raise ValueError("Music cover generation requires a prompt.")
+            if cover_feature_id and not lyrics:
+                raise ValueError(
+                    "Music cover generation with cover_feature_id requires lyrics."
                 )
             return
 
-        # Generation models need a prompt or lyrics unless instrumental with a prompt.
-        if not prompt and not lyrics and not is_instrumental:
+        if audio_url or audio_base64 or cover_feature_id:
             raise ValueError(
-                "Music generation requires a prompt, lyrics, or is_instrumental=True."
+                "Reference audio inputs are only supported by music cover models."
+            )
+        if is_instrumental and not prompt:
+            raise ValueError("Instrumental music generation requires a prompt.")
+        if not is_instrumental and not lyrics:
+            if lyrics_optimizer and prompt:
+                return
+            raise ValueError(
+                "Non-instrumental music generation requires lyrics or "
+                "lyrics_optimizer=True with a prompt."
             )
 
     def _extract_error_message(self, payload: Dict[str, Any], status: int) -> str:
@@ -232,8 +258,10 @@ class MiniMaxMusicProvider:
                 output_format=output_format,
                 stream=stream,
                 is_instrumental=is_instrumental,
+                lyrics_optimizer=lyrics_optimizer,
                 prompt=prompt,
                 lyrics=lyrics,
+                audio_setting=audio_setting,
                 audio_url=audio_url,
                 audio_base64=audio_base64,
                 cover_feature_id=cover_feature_id,

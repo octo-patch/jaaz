@@ -1,9 +1,15 @@
 import pytest
 from services.config_service import config_service
-from tools.music_providers.minimax_provider import MiniMaxMusicProvider
+from tools.music_providers.minimax_provider import (
+    MUSIC_COVER_MODELS,
+    MUSIC_GENERATION_MODELS,
+    MiniMaxMusicProvider,
+)
 
 
-def make_provider(monkeypatch, url: str = "https://api.minimax.io") -> MiniMaxMusicProvider:
+def make_provider(
+    monkeypatch, url: str = "https://api.minimax.io"
+) -> MiniMaxMusicProvider:
     monkeypatch.setitem(
         config_service.app_config,
         "minimax",
@@ -39,6 +45,24 @@ def test_minimax_builds_music_endpoint(monkeypatch, url: str, expected: str):
 def test_minimax_detects_region(monkeypatch):
     assert make_provider(monkeypatch, "https://api.minimax.io").region == "global_en"
     assert make_provider(monkeypatch, "https://api.minimaxi.com").region == "cn_zh"
+
+
+def test_minimax_supports_generation_and_cover_models():
+    assert MUSIC_GENERATION_MODELS == [
+        "music-3.0",
+        "music-2.6",
+        "music-3.0-free",
+        "music-2.6-free",
+    ]
+    assert MUSIC_COVER_MODELS == ["music-cover", "music-cover-free"]
+
+
+def test_minimax_builds_bearer_headers(monkeypatch):
+    provider = make_provider(monkeypatch)
+    assert provider._build_headers() == {
+        "Authorization": "Bearer test-key",
+        "Content-Type": "application/json",
+    }
 
 
 def test_minimax_builds_generation_payload(monkeypatch):
@@ -108,8 +132,10 @@ def test_minimax_validates_request(monkeypatch):
             output_format="url",
             stream=False,
             is_instrumental=False,
+            lyrics_optimizer=False,
             prompt="Pop",
             lyrics=None,
+            audio_setting=None,
             audio_url=None,
             audio_base64=None,
             cover_feature_id=None,
@@ -121,8 +147,10 @@ def test_minimax_validates_request(monkeypatch):
             output_format="wav",
             stream=False,
             is_instrumental=False,
+            lyrics_optimizer=False,
             prompt="Pop",
             lyrics=None,
+            audio_setting=None,
             audio_url=None,
             audio_base64=None,
             cover_feature_id=None,
@@ -134,8 +162,10 @@ def test_minimax_validates_request(monkeypatch):
             output_format="url",
             stream=True,
             is_instrumental=False,
+            lyrics_optimizer=False,
             prompt="Pop",
             lyrics=None,
+            audio_setting=None,
             audio_url=None,
             audio_base64=None,
             cover_feature_id=None,
@@ -147,8 +177,103 @@ def test_minimax_validates_request(monkeypatch):
             output_format="url",
             stream=False,
             is_instrumental=False,
+            lyrics_optimizer=False,
             prompt="A jazz remake",
             lyrics=None,
+            audio_setting=None,
+            audio_url=None,
+            audio_base64=None,
+            cover_feature_id=None,
+        )
+
+
+def test_minimax_validates_conditional_inputs(monkeypatch):
+    provider = make_provider(monkeypatch)
+
+    with pytest.raises(ValueError, match="requires a prompt"):
+        provider._validate_request(
+            model="music-3.0",
+            output_format="url",
+            stream=False,
+            is_instrumental=True,
+            lyrics_optimizer=False,
+            prompt=None,
+            lyrics=None,
+            audio_setting=None,
+            audio_url=None,
+            audio_base64=None,
+            cover_feature_id=None,
+        )
+
+    with pytest.raises(ValueError, match="requires lyrics"):
+        provider._validate_request(
+            model="music-3.0",
+            output_format="url",
+            stream=False,
+            is_instrumental=False,
+            lyrics_optimizer=False,
+            prompt="Pop",
+            lyrics=None,
+            audio_setting=None,
+            audio_url=None,
+            audio_base64=None,
+            cover_feature_id=None,
+        )
+
+    provider._validate_request(
+        model="music-3.0",
+        output_format="url",
+        stream=False,
+        is_instrumental=False,
+        lyrics_optimizer=True,
+        prompt="Pop",
+        lyrics=None,
+        audio_setting=None,
+        audio_url=None,
+        audio_base64=None,
+        cover_feature_id=None,
+    )
+
+    with pytest.raises(ValueError, match="exactly one"):
+        provider._validate_request(
+            model="music-cover",
+            output_format="url",
+            stream=False,
+            is_instrumental=False,
+            lyrics_optimizer=False,
+            prompt="A jazz remake",
+            lyrics=None,
+            audio_setting=None,
+            audio_url="https://example.com/song.mp3",
+            audio_base64="dGVzdA==",
+            cover_feature_id=None,
+        )
+
+    with pytest.raises(ValueError, match="cover_feature_id requires lyrics"):
+        provider._validate_request(
+            model="music-cover",
+            output_format="url",
+            stream=False,
+            is_instrumental=False,
+            lyrics_optimizer=False,
+            prompt="A jazz remake",
+            lyrics=None,
+            audio_setting=None,
+            audio_url=None,
+            audio_base64=None,
+            cover_feature_id="feature-id",
+        )
+
+    with pytest.raises(ValueError, match="Unsupported audio format"):
+        provider._validate_request(
+            model="music-3.0",
+            output_format="url",
+            stream=False,
+            is_instrumental=False,
+            lyrics_optimizer=False,
+            prompt="Pop",
+            lyrics="[Chorus]\nHello world",
+            audio_setting={"format": "flac"},
             audio_url=None,
             audio_base64=None,
             cover_feature_id=None,
