@@ -22,16 +22,16 @@ class MiniMaxVideoProvider(VideoProviderBase, provider_name="minimax"):
         if not self.base_url:
             raise ValueError("MiniMax URL is not configured")
 
-    def _build_api_url(self, suffix: str = "") -> str:
+    def _build_api_url(self, path: str = "/video_generation") -> str:
         base_url = self.base_url.rstrip("/")
         if base_url.endswith("/v2/video_generation"):
-            endpoint = base_url
+            api_root = base_url.removesuffix("/video_generation")
         elif base_url.endswith("/v2"):
-            endpoint = f"{base_url}/video_generation"
+            api_root = base_url
         else:
-            endpoint = f"{base_url}/v2/video_generation"
+            api_root = f"{base_url}/v2"
 
-        return f"{endpoint}{suffix}"
+        return f"{api_root}/{path.lstrip('/')}"
 
     def _build_headers(self) -> Dict[str, str]:
         return {
@@ -248,7 +248,7 @@ class MiniMaxVideoProvider(VideoProviderBase, provider_name="minimax"):
             response = await self._request_json(
                 session,
                 "POST",
-                "",
+                "/video_generation",
                 headers,
                 payload=payload,
             )
@@ -265,7 +265,7 @@ class MiniMaxVideoProvider(VideoProviderBase, provider_name="minimax"):
             return await self._request_json(
                 session,
                 "GET",
-                f"/{task_id}",
+                f"/query/video_generation/{task_id}",
                 headers,
             )
 
@@ -296,7 +296,7 @@ class MiniMaxVideoProvider(VideoProviderBase, provider_name="minimax"):
             return await self._request_json(
                 session,
                 "GET",
-                "",
+                "/query/video_generation",
                 headers,
                 params=params,
             )
@@ -307,7 +307,7 @@ class MiniMaxVideoProvider(VideoProviderBase, provider_name="minimax"):
             return await self._request_json(
                 session,
                 "DELETE",
-                f"/{task_id}",
+                f"/video_generation/{task_id}",
                 headers,
             )
 
