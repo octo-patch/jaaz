@@ -121,8 +121,8 @@ const PROVIDER_OPTIONS = [
     data: {
       apiUrl: 'https://api.minimax.io/v1/',
       models: {
+        'MiniMax-M3.1-Flash': { type: 'text' },
         'MiniMax-M3': { type: 'text' },
-        'MiniMax-M2.7': { type: 'text' },
       },
     },
   },
@@ -132,8 +132,8 @@ const PROVIDER_OPTIONS = [
     data: {
       apiUrl: 'https://api.minimaxi.com/v1/',
       models: {
+        'MiniMax-M3.1-Flash': { type: 'text' },
         'MiniMax-M3': { type: 'text' },
-        'MiniMax-M2.7': { type: 'text' },
       },
     },
   },
